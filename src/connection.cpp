@@ -154,6 +154,8 @@ static bool ApplyPreconnAttrs(HDBC hdbc, SQLINTEGER ikey, PyObject *value, char 
         return false;
     }
 
+    TRACE("ApplyPreconnAttrs.SQLSetConnectAttrW key=%d value=%p vallen=%d\n", ikey, ivalue);
+
     Py_BEGIN_ALLOW_THREADS
     ret = SQLSetConnectAttrW(hdbc, ikey, ivalue, vallen);
     Py_END_ALLOW_THREADS
@@ -186,7 +188,7 @@ PyObject* Connection_New(PyObject* pConnectString, bool fAutoCommit, long timeou
         return RaiseErrorFromHandle(0, "SQLAllocHandle", SQL_NULL_HANDLE, SQL_NULL_HANDLE);
 
     //
-    // Attributes that must be set before connecting.
+    // Attributes that must be set before connecting. These are passed via `attr_before` in python.
     //
 
     if (attrs_before)
@@ -362,6 +364,8 @@ static PyObject* Connection_set_attr(PyObject* self, PyObject* args)
         return 0;
 
     Connection* cnxn = (Connection*)self;
+
+    TRACE("SQLSetConnectAttr id=%d value=%d\n", id, value);
 
     SQLRETURN ret;
     Py_BEGIN_ALLOW_THREADS
@@ -976,6 +980,9 @@ static int Connection_settimeout(PyObject* self, PyObject* value, void* closure)
         return -1;
     }
 
+    // this same value is used for the cursor timeout
+    cnxn->timeout = timeout;
+
     SQLRETURN ret;
     Py_BEGIN_ALLOW_THREADS
     ret = SQLSetConnectAttr(cnxn->hdbc, SQL_ATTR_CONNECTION_TIMEOUT, (SQLPOINTER)(uintptr_t)timeout, SQL_IS_UINTEGER);
@@ -985,8 +992,6 @@ static int Connection_settimeout(PyObject* self, PyObject* value, void* closure)
         RaiseErrorFromHandle(cnxn, "SQLSetConnectAttr", cnxn->hdbc, SQL_NULL_HANDLE);
         return -1;
     }
-
-    cnxn->timeout = timeout;
 
     return 0;
 }
